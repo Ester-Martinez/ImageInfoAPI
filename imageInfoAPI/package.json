@@ -1,0 +1,24 @@
+{
+  "name": "image-info-api",
+  "version": "1.0.0",
+  "description": "Cloudinary info",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ester-Martinez/ImageInfoAPI.git"
+  },
+  "keywords": [
+    "cloudinary",
+    "info",
+    "api"
+  ],
+  "author": "Ester Martinez",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ester-Martinez/ImageInfoAPI/issues"
+  },
+  "homepage": "https://github.com/Ester-Martinez/ImageInfoAPI#readme"
+}
