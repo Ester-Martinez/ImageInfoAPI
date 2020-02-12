@@ -1,5 +1,5 @@
 const express = require("express");
-// const secure = require("./../middlewares/secure.mid");
+const ensureLogin = require("connect-ensure-login");
 const apiRouter = express.Router();
 const cloudinary = require("cloudinary");
 
@@ -9,12 +9,12 @@ cloudinary.config({
   api_secret: process.env.API_SECRET
 });
 
-function getFormats(result) {
+function getFormats(results) {
   let jpg = 0;
   let png = 0;
   let svg = 0;
   let otherFormats = 0;
-  result.resources.forEach(image => {
+  results.forEach(image => {
     if (image.format === "jpg") {
       jpg++;
     } else if (image.format === "png") {
@@ -32,54 +32,111 @@ function getFormats(result) {
     otherFormats: otherFormats
   });
 }
-function getBiggestPicture(result) {
+function getBiggestPicture(results) {
   let maxSize = Math.max.apply(
     Math,
-    result.resources.map(function(size) {
+    results.map(function(size) {
       return size.bytes;
     })
   );
-  let biggestPicture = result.resources.find(function(image) {
+  let biggestPicture = results.find(function(image) {
     return image.bytes == maxSize;
   });
   return biggestPicture.url;
 }
-function getSmallestPicture(result) {
+function getSmallestPicture(results) {
   let minSize = Math.min.apply(
     Math,
-    result.resources.map(function(size) {
+    results.map(function(size) {
       return size.bytes;
     })
   );
-  let smallestPicture = result.resources.find(function(image) {
+  let smallestPicture = results.find(function(image) {
     return image.bytes == minSize;
   });
   return smallestPicture.url;
 }
-function getAverageSize(result) {
-  let totalBytes = result.resources.reduce(function (a, b) {
-    return {bytes: a.bytes + b.bytes}; 
-  })
-  return totalBytes.bytes / result.resources.length
+function getAverageSize(results) {
+  let totalBytes = results.reduce(function(a, b) {
+    return { bytes: a.bytes + b.bytes };
+  });
+  return Math.trunc(totalBytes.bytes / results.length);
 }
 
-apiRouter.get("/statistics", ensureLogin.ensureLoggedIn(), (req, res, next) => {
-  var options = (options = { type: "upload", max_results: 500 });
-  cloudinary.v2.api.resources(options, function(error, result) {
-    let totalImages = result.resources.length;
-    let formats = getFormats(result);
-    let biggestPicture = getBiggestPicture(result);
-    let smallestPicture = getSmallestPicture(result);
-    let avgSize = getAverageSize(result)
-    let infoToShow = {
-      totalImages: totalImages,
-      formats: formats,
-      biggestPicture: biggestPicture,
-      smallestPicture: smallestPicture,
-      avgSize: avgSize
-    };
-    res.json(infoToShow);
-  });
-});
+apiRouter.get(
+  "/statistics",
+  // ensureLogin.ensureLoggedIn(),
+  (req, res, next) => {
+    let results = [];
+
+    function callToCloudinary(cursorParam = "") {
+      var options = (options = {
+        type: "upload",
+        max_results: 500,
+        next_cursor: cursorParam
+      });
+
+      cloudinary.v2.api.resources(options, function(error, result) {
+        result.resources.forEach(resource => results.push(resource));
+
+        if (result.hasOwnProperty("next_cursor")) {
+          callToCloudinary(result.next_cursor);
+        } else {
+          let totalImages = results.length;
+          let formats = getFormats(results);
+          let biggestPicture = getBiggestPicture(results);
+          let smallestPicture = getSmallestPicture(results);
+          let avgSize = getAverageSize(results);
+          let infoToShow = {
+            totalImages: totalImages,
+            formats: formats,
+            biggestPicture: biggestPicture,
+            smallestPicture: smallestPicture,
+            avgSize: avgSize
+          };
+          res.json(infoToShow);
+        }
+      });
+    }
+    callToCloudinary();
+  }
+);
+
+apiRouter.get(
+  "/csv",
+  // ensureLogin.ensureLoggedIn(),
+  (req, res, next) => {
+    let results = [];
+
+    function callToCloudinary(cursorParam = "") {
+      var options = (options = {
+        type: "upload",
+        max_results: 500,
+        next_cursor: cursorParam
+      });
+
+      cloudinary.v2.api.resources(options, function(error, result) {
+        result.resources.forEach(resource => results.push(resource));
+
+        if (result.hasOwnProperty("next_cursor")) {
+          callToCloudinary(result.next_cursor);
+        } else {
+          var keys = Object.keys(results[0]);
+          var csv = results.map(function(row) {
+            return keys
+              .map(function(keyName) {
+                return JSON.stringify(row[keyName]);
+              })
+              .join(",");
+          });
+          csv.unshift(keys.join(","));
+          csv = csv.join("\r\n");
+          res.json(csv);
+        }
+      });
+    }
+    callToCloudinary();
+  }
+);
 
 module.exports = apiRouter;
