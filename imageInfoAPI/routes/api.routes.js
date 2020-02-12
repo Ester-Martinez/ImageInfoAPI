@@ -65,7 +65,7 @@ function getAverageSize(results) {
 
 apiRouter.get(
   "/statistics",
-  // ensureLogin.ensureLoggedIn(),
+  ensureLogin.ensureLoggedIn(),
   (req, res, next) => {
     let results = [];
 
@@ -104,7 +104,7 @@ apiRouter.get(
 
 apiRouter.get(
   "/csv",
-  // ensureLogin.ensureLoggedIn(),
+  ensureLogin.ensureLoggedIn(),
   (req, res, next) => {
     let results = [];
 
